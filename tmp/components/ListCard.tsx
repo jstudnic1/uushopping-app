@@ -1,29 +1,22 @@
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { ShoppingList } from "@/types/shopping-list";
-import { ShoppingBag, Archive, Users, Trash2 } from "lucide-react-native";
+import { ShoppingBag, Archive, Users } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useRouter } from "expo-router";
 import { useShoppingLists } from "@/contexts/ShoppingListContext";
 
 type ListCardProps = {
   list: ShoppingList;
-  onDelete?: (id: string) => void;
 };
 
-export default function ListCard({ list, onDelete }: ListCardProps) {
+export default function ListCard({ list }: ListCardProps) {
   const router = useRouter();
   const { user } = useShoppingLists();
-
+  
   const isOwner = list.members.some((m) => m.userId === user?.id && m.role === "owner");
   const itemsCount = list.items.length;
   const doneCount = list.items.filter((i) => i.done).length;
   const pendingCount = itemsCount - doneCount;
-
-  const handleDelete = () => {
-    if (onDelete) {
-      onDelete(list.id);
-    }
-  };
 
   return (
     <TouchableOpacity
@@ -36,45 +29,30 @@ export default function ListCard({ list, onDelete }: ListCardProps) {
       accessibilityHint="Tap to open list details"
     >
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.iconContainer}>
-            {list.archived ? (
-              <Archive size={24} color={Colors.light.secondaryText} />
-            ) : (
-              <ShoppingBag size={24} color={Colors.light.tint} />
-            )}
-          </View>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={1}>
-              {list.title}
-            </Text>
-            <View style={styles.metadata}>
-              <View style={styles.metaItem}>
-                <Users size={14} color={Colors.light.secondaryText} />
-                <Text style={styles.metaText}>{list.members.length}</Text>
-              </View>
-              <Text style={styles.metaDivider}>•</Text>
-              <Text style={styles.metaText}>
-                {isOwner ? "Owner" : "Member"}
-              </Text>
+        <View style={styles.iconContainer}>
+          {list.archived ? (
+            <Archive size={24} color={Colors.light.secondaryText} />
+          ) : (
+            <ShoppingBag size={24} color={Colors.light.tint} />
+          )}
+        </View>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {list.title}
+          </Text>
+          <View style={styles.metadata}>
+            <View style={styles.metaItem}>
+              <Users size={14} color={Colors.light.secondaryText} />
+              <Text style={styles.metaText}>{list.members.length}</Text>
             </View>
+            <Text style={styles.metaDivider}>•</Text>
+            <Text style={styles.metaText}>
+              {isOwner ? "Owner" : "Member"}
+            </Text>
           </View>
         </View>
-
-        {isOwner && onDelete && (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            testID={`delete-list-${list.id}`}
-            accessibilityLabel="Delete list"
-            accessibilityRole="button"
-          >
-            <Trash2 size={20} color={Colors.light.danger} />
-          </TouchableOpacity>
-        )}
       </View>
-
+      
       {itemsCount > 0 && (
         <View style={styles.stats}>
           <View style={styles.progressBar}>
@@ -97,12 +75,10 @@ export default function ListCard({ list, onDelete }: ListCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
     backgroundColor: Colors.light.cardBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    marginHorizontal: 6,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -123,15 +99,8 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  headerLeft: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    flex: 1,
   },
   iconContainer: {
     width: 48,
@@ -145,7 +114,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600" as const,
     color: Colors.light.text,
     marginBottom: 4,
@@ -161,19 +130,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.light.secondaryText,
   },
   metaDivider: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.light.secondaryText,
   },
-  deleteButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
   stats: {
-    marginTop: 0,
+    marginTop: 12,
   },
   progressBar: {
     height: 4,
@@ -188,7 +153,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   statsText: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.light.secondaryText,
   },
 });

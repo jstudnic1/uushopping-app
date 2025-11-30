@@ -11,7 +11,6 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from "react-native";
 
 import { Plus, Archive, List as ListIcon } from "lucide-react-native";
@@ -28,12 +27,12 @@ export default function ListsScreen() {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
   const [isCreatingList, setIsCreatingList] = useState(false);
-  const { createList, deleteList } = useShoppingLists();
+  const { createList } = useShoppingLists();
   const { data: lists, isLoading, error, refetch } = useLists(showArchived);
 
   const handleCreateList = async () => {
     if (!newListTitle.trim()) return;
-
+    
     setIsCreatingList(true);
     try {
       await createList(newListTitle.trim());
@@ -44,28 +43,6 @@ export default function ListsScreen() {
     } finally {
       setIsCreatingList(false);
     }
-  };
-
-  const handleDeleteList = async (listId: string) => {
-    Alert.alert(
-      "Delete List",
-      "Are you sure you want to delete this list? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteList(listId);
-            } catch (err) {
-              Alert.alert("Error", "Failed to delete list");
-              console.error("Failed to delete list:", err);
-            }
-          },
-        },
-      ]
-    );
   };
 
   if (isLoading) {
@@ -109,7 +86,7 @@ export default function ListsScreen() {
           ),
         }}
       />
-
+      
       <View style={styles.content}>
         {filteredLists.length === 0 ? (
           <EmptyState
@@ -125,19 +102,12 @@ export default function ListsScreen() {
           <FlatList
             data={filteredLists}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ListCard
-                list={item}
-                onDelete={handleDeleteList}
-              />
-            )}
+            renderItem={({ item }) => <ListCard list={item} />}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={() => refetch()} />
             }
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
           />
         )}
       </View>
@@ -238,10 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    padding: 10,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
+    padding: 16,
   },
   fab: {
     position: "absolute",
