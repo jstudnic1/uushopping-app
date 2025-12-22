@@ -1,9 +1,16 @@
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+} from "react-native";
 import { ShoppingList } from "@/types/shopping-list";
 import { ShoppingBag, Archive, Users, Trash2 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import { useRouter } from "expo-router";
 import { useShoppingLists } from "@/contexts/ShoppingListContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type ListCardProps = {
   list: ShoppingList;
@@ -13,8 +20,12 @@ type ListCardProps = {
 export default function ListCard({ list, onDelete }: ListCardProps) {
   const router = useRouter();
   const { user } = useShoppingLists();
+  const { colors, theme } = useTheme();
+  const { t } = useLanguage();
 
-  const isOwner = list.members.some((m) => m.userId === user?.id && m.role === "owner");
+  const isOwner = list.members.some(
+    (m) => m.userId === user?.id && m.role === "owner"
+  );
   const itemsCount = list.items.length;
   const doneCount = list.items.filter((i) => i.done).length;
   const pendingCount = itemsCount - doneCount;
@@ -27,35 +38,59 @@ export default function ListCard({ list, onDelete }: ListCardProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.card, list.archived && styles.archivedCard]}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.cardBackground,
+          shadowColor: theme === "light" ? "#000" : "transparent",
+          borderColor: colors.border,
+        },
+        list.archived && styles.archivedCard,
+      ]}
       onPress={() => router.push(`/lists/${list.id}` as never)}
       activeOpacity={0.7}
       testID={`list-card-${list.id}`}
-      accessibilityLabel={`${list.title}. ${itemsCount} items, ${doneCount} completed. You are ${isOwner ? 'owner' : 'member'}`}
+      accessibilityLabel={`${list.title}. ${itemsCount} items, ${doneCount} completed.`}
       accessibilityRole="button"
       accessibilityHint="Tap to open list details"
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.iconContainer}>
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
             {list.archived ? (
-              <Archive size={24} color={Colors.light.secondaryText} />
+              <Archive size={24} color={colors.secondaryText} />
             ) : (
-              <ShoppingBag size={24} color={Colors.light.tint} />
+              <ShoppingBag size={24} color={colors.tint} />
             )}
           </View>
           <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text
+              style={[styles.title, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {list.title}
             </Text>
             <View style={styles.metadata}>
               <View style={styles.metaItem}>
-                <Users size={14} color={Colors.light.secondaryText} />
-                <Text style={styles.metaText}>{list.members.length}</Text>
+                <Users size={14} color={colors.secondaryText} />
+                <Text
+                  style={[styles.metaText, { color: colors.secondaryText }]}
+                >
+                  {list.members.length}
+                </Text>
               </View>
-              <Text style={styles.metaDivider}>•</Text>
-              <Text style={styles.metaText}>
-                {isOwner ? "Owner" : "Member"}
+              <Text
+                style={[styles.metaDivider, { color: colors.secondaryText }]}
+              >
+                •
+              </Text>
+              <Text style={[styles.metaText, { color: colors.secondaryText }]}>
+                {isOwner ? t("lists.owner") : "Member"}
               </Text>
             </View>
           </View>
@@ -70,24 +105,28 @@ export default function ListCard({ list, onDelete }: ListCardProps) {
             accessibilityLabel="Delete list"
             accessibilityRole="button"
           >
-            <Trash2 size={20} color={Colors.light.danger} />
+            <Trash2 size={20} color={colors.danger} />
           </TouchableOpacity>
         )}
       </View>
 
       {itemsCount > 0 && (
         <View style={styles.stats}>
-          <View style={styles.progressBar}>
+          <View
+            style={[styles.progressBar, { backgroundColor: colors.background }]}
+          >
             <View
               style={[
                 styles.progressFill,
-                { width: `${(doneCount / itemsCount) * 100}%` },
+                {
+                  width: `${(doneCount / itemsCount) * 100}%`,
+                  backgroundColor: colors.success,
+                },
               ]}
             />
           </View>
-          <Text style={styles.statsText}>
-            {doneCount} of {itemsCount} items done
-            {pendingCount > 0 && ` • ${pendingCount} pending`}
+          <Text style={[styles.statsText, { color: colors.secondaryText }]}>
+            {doneCount}/{itemsCount}
           </Text>
         </View>
       )}
@@ -98,14 +137,12 @@ export default function ListCard({ list, onDelete }: ListCardProps) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: Colors.light.cardBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     marginHorizontal: 6,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 8,
@@ -115,6 +152,8 @@ const styles = StyleSheet.create({
       },
       web: {
         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+        borderWidth: 1,
+        borderStyle: "solid" as const,
       },
     }),
   },
@@ -137,7 +176,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: Colors.light.background,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -147,7 +185,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.light.text,
     marginBottom: 4,
   },
   metadata: {
@@ -162,11 +199,9 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    color: Colors.light.secondaryText,
   },
   metaDivider: {
     fontSize: 12,
-    color: Colors.light.secondaryText,
   },
   deleteButton: {
     padding: 4,
@@ -174,21 +209,21 @@ const styles = StyleSheet.create({
   },
   stats: {
     marginTop: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   progressBar: {
+    flex: 1,
     height: 4,
-    backgroundColor: Colors.light.background,
     borderRadius: 2,
     overflow: "hidden",
-    marginBottom: 6,
   },
   progressFill: {
     height: "100%",
-    backgroundColor: Colors.light.success,
     borderRadius: 2,
   },
   statsText: {
     fontSize: 12,
-    color: Colors.light.secondaryText,
   },
 });

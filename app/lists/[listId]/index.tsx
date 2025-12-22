@@ -19,17 +19,19 @@ import {
   Settings,
   ShoppingBag,
 } from "lucide-react-native";
-import Colors from "@/constants/colors";
 import {
   useList,
   useShoppingLists,
   useIsOwner,
 } from "@/contexts/ShoppingListContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import ItemRow from "@/components/ItemRow";
 import EmptyState from "@/components/EmptyState";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
 import { ItemFilter } from "@/types/shopping-list";
+import ListStats from "@/components/Charts/ListStats";
 
 export default function ListDetailScreen() {
   const { listId } = useLocalSearchParams<{ listId: string }>();
@@ -40,6 +42,8 @@ export default function ListDetailScreen() {
   const { createItem, updateItem, deleteItem } = useShoppingLists();
   const { data: list, isLoading, error, refetch } = useList(listId!);
   const isOwner = useIsOwner(list);
+  const { colors, theme } = useTheme();
+  const { t } = useLanguage();
 
   const handleAddItem = async () => {
     if (!newItemTitle.trim() || !listId) return;
@@ -48,7 +52,7 @@ export default function ListDetailScreen() {
     try {
       await createItem({ listId, title: newItemTitle.trim() });
       setNewItemTitle("");
-      Keyboard.dismiss();
+      Platform.OS !== "web" && Keyboard.dismiss(); // Keep focus on web usually
     } catch (err) {
       console.error("Failed to create item:", err);
     } finally {
@@ -90,7 +94,7 @@ export default function ListDetailScreen() {
   if (isLoading) {
     return (
       <>
-        <Stack.Screen options={{ title: "Loading..." }} />
+        <Stack.Screen options={{ title: t("detail.loading") }} />
         <LoadingState />
       </>
     );
@@ -99,9 +103,9 @@ export default function ListDetailScreen() {
   if (error || !list) {
     return (
       <>
-        <Stack.Screen options={{ title: "Error" }} />
+        <Stack.Screen options={{ title: t("detail.error") }} />
         <ErrorState
-          error={error as Error || new Error("List not found")}
+          error={(error as Error) || new Error(t("detail.notFound"))}
           onRetry={() => refetch()}
         />
       </>
@@ -116,13 +120,23 @@ export default function ListDetailScreen() {
       : list.items.filter((i) => i.done);
 
   const filterLabel =
-    filter === "all" ? "All" : filter === "open" ? "Open" : "Done";
+    filter === "all"
+      ? t("detail.filter.all")
+      : filter === "open"
+      ? t("detail.filter.open")
+      : t("detail.filter.done");
+
+  // Stats calculation
+  const doneCount = list.items.filter((i) => i.done).length;
+  const openCount = list.items.length - doneCount;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           title: list.title,
+          headerStyle: { backgroundColor: colors.cardBackground },
+          headerTintColor: colors.text,
           headerRight: () => (
             <View style={styles.headerButtons}>
               <TouchableOpacity
@@ -134,21 +148,17 @@ export default function ListDetailScreen() {
               >
                 <Filter
                   size={24}
-                  color={
-                    filter !== "all" ? Colors.light.tint : Colors.light.text
-                  }
+                  color={filter !== "all" ? colors.tint : colors.text}
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() =>
-                  router.push(`/lists/${listId}/members` as never)
-                }
+                onPress={() => router.push(`/lists/${listId}/members` as never)}
                 style={styles.headerButton}
                 testID="members-button"
-                accessibilityLabel="Manage members"
+                accessibilityLabel={t("detail.members")}
                 accessibilityRole="button"
               >
-                <Users size={24} color={Colors.light.text} />
+                <Users size={24} color={colors.text} />
               </TouchableOpacity>
               {isOwner && (
                 <TouchableOpacity
@@ -157,10 +167,10 @@ export default function ListDetailScreen() {
                   }
                   style={styles.headerButton}
                   testID="settings-button"
-                  accessibilityLabel="List settings"
+                  accessibilityLabel={t("detail.settings")}
                   accessibilityRole="button"
                 >
-                  <Settings size={24} color={Colors.light.text} />
+                  <Settings size={24} color={colors.text} />
                 </TouchableOpacity>
               )}
             </View>
@@ -169,8 +179,10 @@ export default function ListDetailScreen() {
       />
 
       <View style={styles.content}>
+        <ListStats resolved={doneCount} unresolved={openCount} />
+
         {filter !== "all" && (
-          <View style={styles.filterBadge}>
+          <View style={[styles.filterBadge, { backgroundColor: colors.tint }]}>
             <Text style={styles.filterBadgeText}>Filter: {filterLabel}</Text>
           </View>
         )}
@@ -180,17 +192,17 @@ export default function ListDetailScreen() {
             icon={ShoppingBag}
             title={
               filter === "done"
-                ? "No Completed Items"
+                ? t("detail.empty.done")
                 : filter === "open"
-                ? "No Pending Items"
-                : "No Items Yet"
+                ? t("detail.empty.open")
+                : t("detail.empty.all")
             }
             message={
               filter === "done"
-                ? "Complete some items to see them here"
+                ? t("detail.emptyStart.done")
                 : filter === "open"
-                ? "All items are done!"
-                : "Add your first item to get started"
+                ? t("detail.emptyStart.open")
+                : t("detail.emptyStart.all")
             }
           />
         ) : (
@@ -209,26 +221,45 @@ export default function ListDetailScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             refreshControl={
-              <RefreshControl refreshing={isLoading} onRefresh={() => refetch()} />
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={() => refetch()}
+              />
             }
           />
         )}
       </View>
 
-      <View style={styles.addItemContainer}>
+      <View
+        style={[
+          styles.addItemContainer,
+          {
+            backgroundColor: colors.cardBackground,
+            borderTopColor: colors.border,
+          },
+        ]}
+      >
         <TextInput
-          style={styles.input}
-          placeholder="Add new item..."
+          style={[
+            styles.input,
+            { backgroundColor: colors.background, color: colors.text },
+          ]}
+          placeholder={t("detail.newItem")}
+          placeholderTextColor={colors.secondaryText}
           value={newItemTitle}
           onChangeText={setNewItemTitle}
           onSubmitEditing={handleAddItem}
           returnKeyType="done"
           testID="add-item-input"
-          accessibilityLabel="New item title"
+          accessibilityLabel={t("detail.newItem")}
           editable={!isAddingItem}
         />
         <TouchableOpacity
-          style={[styles.addButton, (!newItemTitle.trim() || isAddingItem) && styles.addButtonDisabled]}
+          style={[
+            styles.addButton,
+            { backgroundColor: colors.tint },
+            (!newItemTitle.trim() || isAddingItem) && styles.addButtonDisabled,
+          ]}
           onPress={handleAddItem}
           disabled={!newItemTitle.trim() || isAddingItem}
           activeOpacity={0.7}
@@ -250,7 +281,6 @@ export default function ListDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
   },
   headerButtons: {
     flexDirection: "row",
@@ -263,7 +293,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterBadge: {
-    backgroundColor: Colors.light.tint,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -288,9 +317,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 16,
     gap: 12,
-    backgroundColor: Colors.light.cardBackground,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -308,17 +335,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: Colors.light.background,
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: Colors.light.text,
   },
   addButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.light.tint,
     justifyContent: "center",
     alignItems: "center",
   },
